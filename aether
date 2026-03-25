@@ -1,0 +1,108 @@
+mod.register("aether_mod", (api) => {
+
+  const { events, player, world } = api;
+
+  let inAether = false;
+
+  // --- PORTAL CHECK ---
+  function isGlowstoneAround(x, y, z) {
+    let blocks = [
+      world.getBlock(x+1,y,z),
+      world.getBlock(x-1,y,z),
+      world.getBlock(x,y,z+1),
+      world.getBlock(x,y,z-1)
+    ];
+    return blocks.every(b => b === "glowstone");
+  }
+
+  // --- GENERATE SKY ISLAND ---
+  function generateIsland(cx, cy, cz) {
+    for (let x = -5; x <= 5; x++) {
+      for (let z = -5; z <= 5; z++) {
+        let dist = Math.sqrt(x*x + z*z);
+        if (dist < 5) {
+          world.setBlock(cx + x, cy, cz + z, "aether_grass");
+          world.setBlock(cx + x, cy - 1, cz + z, "dirt");
+        }
+      }
+    }
+  }
+
+  // --- CREATE CLOUD PLATFORM ---
+  function createCloud(x, y, z) {
+    for (let i = -2; i <= 2; i++) {
+      for (let j = -2; j <= 2; j++) {
+        world.setBlock(x + i, y, z + j, "cloud");
+      }
+    }
+  }
+
+  // --- SPAWN MOA ---
+  function spawnMoa(x, y, z) {
+    world.spawnEntity("moa", {
+      x: x,
+      y: y,
+      z: z,
+      health: 20,
+      friendly: true
+    });
+  }
+
+  // --- ENTER AETHER ---
+  function enterAether() {
+    let pos = player.getPosition();
+    player.setPosition(pos.x, 200, pos.z);
+
+    generateIsland(pos.x, 200, pos.z);
+    createCloud(pos.x + 6, 202, pos.z);
+    spawnMoa(pos.x + 2, 201, pos.z);
+
+    player.sendMessage("§bEntered the Aether!");
+    inAether = true;
+  }
+
+  // --- EXIT AETHER ---
+  function exitAether() {
+    let pos = player.getPosition();
+    player.setPosition(pos.x, 70, pos.z);
+    player.sendMessage("§aReturned to the Overworld");
+    inAether = false;
+  }
+
+  // --- BLOCK EVENTS ---
+  events.onBlockUpdate((x, y, z, type) => {
+    if (type === "water" && isGlowstoneAround(x, y, z)) {
+      enterAether();
+    }
+  });
+
+  // --- SIMPLE COMMAND ---
+  events.onChat((msg) => {
+    if (msg === "/aether") {
+      enterAether();
+    }
+    if (msg === "/overworld") {
+      exitAether();
+    }
+  });
+
+  // --- REGISTER CUSTOM BLOCKS ---
+  world.registerBlock("aether_grass", {
+    color: "lightgreen",
+    solid: true
+  });
+
+  world.registerBlock("cloud", {
+    color: "white",
+    solid: true
+  });
+
+  // --- REGISTER ENTITY ---
+  world.registerEntity("moa", {
+    onTick: (entity) => {
+      // simple floating behavior
+      entity.y += Math.sin(Date.now() / 500) * 0.05;
+    }
+  });
+
+});
